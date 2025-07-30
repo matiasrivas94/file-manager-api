@@ -10,11 +10,18 @@ Route::get('/', fn() => response()->json(['message' => 'API funcionando correcta
 // CARPETAS
 Route::apiResource('folders', FolderController::class);
 
+// // ARCHIVOS
+// Route::apiResource('files', FileController::class);
+// // RESTAURAR ARCHIVO ELIMINADO
+// Route::post('files/{id}/restore', [FileController::class, 'restore']);
+// // ELIMINAR DEFINITIVAMENTE UN ARCHUVO
+// Route::delete('files/{id}/force', [FileController::class, 'forceDelete']);
+
 // ARCHIVOS
-Route::apiResource('files', FileController::class);
-
-// RESTAURAR ARCHIVO ELIMINADO
-Route::post('files/{id}/restore', [FileController::class, 'restore']);
-
-// ELIMINAR DEFINITIVAMENTE UN ARCHUVO
-Route::delete('files/{id}/force', [FileController::class, 'forceDelete']);
+Route::prefix('files')->group(function () {
+    Route::get('/', [FileController::class, 'index']);
+    Route::post('/', [FileController::class, 'store']);
+    Route::delete('/{id}', [FileController::class, 'destroy']); // Borrado lógico
+    Route::post('/{id}/restore', [FileController::class, 'restore']); // Restaurar
+    Route::delete('/{id}/force', [FileController::class, 'forceDelete']); // Borrado definitivo
+});
