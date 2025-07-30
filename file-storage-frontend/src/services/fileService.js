@@ -18,4 +18,10 @@ export default {
   update(id, data) {
     return api.post(`/files/${id}?_method=PUT`, data);
   },
+  restore(id) {
+    return api.post(`/files/${id}/restore`);
+  },
+  forceDelete(id) {
+    return api.delete(`files/${id}/force`);
+  },
 };

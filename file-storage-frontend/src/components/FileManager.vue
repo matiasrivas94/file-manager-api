@@ -31,6 +31,7 @@
     </div>
     <!-- Fin -->
 
+    <!-- Botón de subir -->
     <button
       @click="uploadFile"
       :disabled="!file || !folderId"
@@ -38,16 +39,61 @@
     >
       Subir archivo
     </button>
+    <!-- Fin -->
 
-    <!-- Vista previa -->
+    <!-- Lista de archivos -->
     <div class="mt-6">
       <h3 class="font-bold mb-2">Archivos subidos:</h3>
       <ul>
-        <li v-for="file in files" :key="file.id" class="mb-2 flex items-center gap-3">
-          <span v-if="isImage(file.mime_type)">
-            <img :src="fileUrl(file.path)" alt="" class="w-10 h-10 object-cover" />
-          </span>
-          <span v-else>📄 {{ file.original_name }}</span>
+        <li
+          v-for="file in files"
+          :key="file.id"
+          class="mb-2 flex items-center gap-4 p-2 border rounded"
+          :class="{ 'opacity-50 italic': file.deleted_at }"
+        >
+          <!-- Icono o preview -->
+          <div>
+            <img
+              v-if="isImage(file.mime_type)"
+              :src="fileUrl(file.path)"
+              alt="preview"
+              class="w-10 h-10 object-cover rounded"
+            />
+            <span v-else class="text-2xl">📄</span>
+          </div>
+
+          <!-- Información del archivo -->
+          <div class="flex-1">
+            <div class="font-medium">{{ file.original_name }}</div>
+            <div class="text-sm text-gray-600">{{ formatSize(file.size) }}</div>
+          </div>
+
+          <!-- Acciones -->
+          <div class="flex gap-2">
+            <button
+              v-if="!file.deleted_at"
+              @click="deleteFile(file.id)"
+              class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
+            >
+              Borrar
+            </button>
+
+            <button
+              v-else
+              @click="restoreFile(file.id)"
+              class="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600"
+            >
+              Restaurar
+            </button>
+
+            <button
+              v-if="file.deleted_at"
+              @click="forceDeleteFile(file.id)"
+              class="bg-black text-white px-2 py-1 rounded hover:bg-gray-800"
+            >
+              Eliminar definitivo
+            </button>
+          </div>
         </li>
       </ul>
     </div>
@@ -60,6 +106,13 @@ import fileService from '../services/fileService';
 import folderService from '../services/folderService';
 
 export default {
+  name: 'FileManager',
+  props: {
+    selectedFolderId: {
+      type: Number,
+      required: false
+    }
+  },
   data() {
     return {
       file: null,
@@ -87,6 +140,11 @@ export default {
     isImage(mime) {
       return mime.startsWith('image/');
     },
+    formatSize(bytes) {
+      const kb = bytes / 1024;
+      const mb = kb / 1024;
+      return mb >= 1 ? mb.toFixed(2) + ' MB' : kb.toFixed(2) + ' KB';
+    },
     async uploadFile() {
       if (!this.file || !this.folderId) return;
 
@@ -95,7 +153,7 @@ export default {
       formData.append('folder_id', this.folderId);
 
       try {
-        const res = await fileService.upload(formData, (progressEvent) => {
+        await fileService.upload(formData, (progressEvent) => {
           const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           this.uploadProgress = percent;
         });
@@ -105,10 +163,26 @@ export default {
         await this.fetchFiles();
       } catch (err) {
         if (err.response && err.response.status === 422) {
-            alert('Error de validación: ' + JSON.stringify(err.response.data.errors));
+          alert('Error de validación: ' + JSON.stringify(err.response.data.errors));
         } else {
-            console.error('Error al subir archivo:', err);
+          console.error('Error al subir archivo:', err);
         }
+      }
+    },
+    async deleteFile(id) {
+      if (confirm('¿Estás seguro de que querés borrar este archivo?')) {
+        await fileService.remove(id);
+        await this.fetchFiles();
+      }
+    },
+    async restoreFile(id) {
+      await fileService.restore(id);
+      await this.fetchFiles();
+    },
+    async forceDeleteFile(id) {
+      if (confirm('¿Eliminar definitivamente este archivo?')) {
+        await fileService.forceDelete(id);
+        await this.fetchFiles();
       }
     },
   },

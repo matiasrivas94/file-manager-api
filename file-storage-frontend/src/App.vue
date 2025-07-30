@@ -15,9 +15,16 @@ import FolderManager from './components/FolderManager.vue';
 import FileManager from './components/FileManager.vue';
 
 export default {
-  components: {
-    FolderManager,
-    FileManager,
+  components: { FolderManager, FileManager },
+  data() {
+    return {
+      selectedFolderId: null
+    };
   },
+  methods: {
+    setFolder(id) {
+      this.selectedFolderId = id;
+    }
+  }
 };
 </script>
