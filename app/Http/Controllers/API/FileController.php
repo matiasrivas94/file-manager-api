@@ -13,11 +13,20 @@ class FileController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        //Listar todos los archivos NO eliminados
-        $files = File::with('folder')->orderBy('created_at', 'desc')->get();
-        return response()->json($files);
+        // //Listar todos los archivos NO eliminados
+        // $files = File::with('folder')->orderBy('created_at', 'desc')->get();
+        // return response()->json($files);
+
+        $query = File::with('folder')->orderBy('created_at', 'desc');
+
+        // Mostrar solo eliminados si el parámetro 'trashed' está presente y es true
+        if ($request->has('trashed') && $request->trashed == 'true') {
+            $query->onlyTrashed();
+        }
+
+        return response()->json($query->get());
     }
 
     /**

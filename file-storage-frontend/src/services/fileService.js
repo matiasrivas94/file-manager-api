@@ -1,8 +1,8 @@
 import api from './api';
 
 export default {
-  getAll() {
-    return api.get('/files');
+  getAll(params = {}) {
+    return api.get('/files', { params });
   },
   upload(formData, onUploadProgress) {
     return api.post('/files', formData, {
