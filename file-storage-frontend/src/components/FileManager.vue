@@ -42,7 +42,7 @@
 
       <div class="flex flex-wrap gap-4 items-center">
         <label class="flex items-center gap-2">
-          <input type="checkbox" v-model="showDeleted" />
+          <input type="checkbox" v-model="showDeleted" @change="fetchFiles"/>
           Ver eliminados
         </label>
 
@@ -154,6 +154,9 @@ export default {
     filteredFiles() {
       return this.files
         .filter(file => this.showDeleted ? file.deleted_at : !file.deleted_at)
+        .filter(file => { if (this.showDeleted) return file.deleted_at;
+                return !file.deleted_at;
+        })
         .filter(file => {
           if (this.onlyImages) return this.isImage(file.mime_type);
           return true;
@@ -194,8 +197,16 @@ export default {
       this.folders = res.data;
     },
     async fetchFiles() {
-      const res = await fileService.getAll();
-      this.files = res.data;
+      // const res = await fileService.getAll();
+      // this.files = res.data;
+      try {
+        const res = await fileService.getAll({
+          trashed: this.showDeleted ? 'true' : 'false' // Para mostrar archivos eliminados.
+        });
+        this.files = res.data;
+      } catch (err) {
+        console.error('Error al obtener archivos:', err);
+      }
     },
     handleFileChange(event) {
       this.file = event.target.files[0];
