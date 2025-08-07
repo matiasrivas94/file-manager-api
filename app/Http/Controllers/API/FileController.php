@@ -15,10 +15,6 @@ class FileController extends Controller
      */
     public function index(Request $request)
     {
-        // //Listar todos los archivos NO eliminados
-        // $files = File::with('folder')->orderBy('created_at', 'desc')->get();
-        // return response()->json($files);
-
         $query = File::with('folder')->orderBy('created_at', 'desc');
 
         // Mostrar solo eliminados si el parámetro 'trashed' está presente y es true
@@ -35,25 +31,23 @@ class FileController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|mimes:jpg,jpeg,png,pdf,doc,docx,xls,xlsx,ppt,pptx,txt|max:10240', // máx 10MB
-            'folder_id' => 'required|exists:folders,id',
+        'file' => 'required|file|mimes:jpg,jpeg,png,pdf,doc,docx,xls,xlsx,ppt,pptx,txt|max:10240',
+        'folder_id' => 'required|exists:folders,id',
         ]);
 
         $uploadedFile = $request->file('file');
 
-        // Generar nombre único
         $newName = Str::uuid()->toString() . '.' . $uploadedFile->getClientOriginalExtension();
 
-        // Guardar en storage/app/files/
-        $path = $uploadedFile->storeAs('files', $newName);
+        // Guarda en el disco 'public' (storage/app/public/files)
+        $path = $uploadedFile->storeAs('public/files', $newName, 'public');
 
-        // Crear registro en la base de datos
         $file = File::create([
             'name' => $newName,
             'original_name' => $uploadedFile->getClientOriginalName(),
             'mime_type' => $uploadedFile->getClientMimeType(),
             'size' => $uploadedFile->getSize(),
-            'path' => $path,
+            'path' => 'files/' . $newName,
             'folder_id' => $request->folder_id,
         ]);
 
@@ -81,7 +75,6 @@ class FileController extends Controller
         ]);
 
         $file = File::findOrFail($id);
-
         $file->update($request->only(['folder_id', 'original_name']));
 
         return response()->json($file);
@@ -123,7 +116,27 @@ class FileController extends Controller
 
         // Eliminar registro en base de datos!
         $file->forceDelete();
-
         return response()->json(['message' => 'Archivo eliminado permanentemente.']);
+    }
+
+     /**
+     * Descargar archivo.
+     */
+    public function download($id)
+    {
+        $file = File::findOrFail($id);
+
+    $fullPath = storage_path('app/' . $file->path);
+
+    if (!file_exists($fullPath)) {
+        return response()->json(['error' => 'Archivo no encontrado'], 404);
+    }
+
+    return response()->download($fullPath, $file->original_name, [
+        'Content-Type' => $file->mime_type,
+        'Content-Disposition' => 'attachment; filename="' . $file->original_name . '"',
+    ]);
+
+
     }
 }
