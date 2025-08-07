@@ -85,6 +85,7 @@
           v-for="file in filteredFiles"
           :key="file.id"
           class="mb-2 p-2 bg-white shadow rounded flex items-center justify-between"
+          @click="selectedFile = file"
         >
           <div class="flex items-center gap-3">
             <span v-if="isImage(file.mime_type)">
@@ -126,6 +127,53 @@
         </li>
       </ul>
     </div>
+
+    <!-- Previsualización del archivo seleccionado -->
+    <div
+      v-if="selectedFile"
+      class="mt-6 p-4 bg-white rounded shadow border max-w-2xl"
+    >
+
+      <button
+        @click="selectedFile = null"
+        class="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-lg"
+        title="Cerrar"
+      >
+        ✕
+      </button>
+
+      <h3 class="text-lg font-semibold mb-4">Previsualización</h3>
+
+      <div class="mb-4">
+        <img
+          v-if="selectedFile.mime_type.startsWith('image/')"
+          :src="fileUrl(selectedFile.path)"
+          alt="Vista previa"
+          class="max-w-full max-h-64 object-contain border rounded"
+        />
+        <div v-else class="flex items-center gap-2 text-gray-600">
+          <span class="text-4xl">📄</span>
+          <span>{{ selectedFile.original_name }}</span>
+        </div>
+      </div>
+
+      <ul class="mb-4 text-sm text-gray-700 space-y-1">
+        <li><strong>Nombre:</strong> {{ selectedFile.original_name }}</li>
+        <li><strong>Tipo:</strong> {{ selectedFile.mime_type }}</li>
+        <li><strong>Tamaño:</strong> {{ formatSize(selectedFile.size) }}</li>
+        <li><strong>Carpeta:</strong> {{ selectedFile.folder?.name || 'Sin carpeta' }}</li>
+      </ul>
+
+      <a 
+     v-if="selectedFile && selectedFile.path"
+  :href="getPublicUrl(selectedFile.path)"
+  :download="selectedFile.original_name"
+  class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+        Descargar archivo
+      </a>
+
+    </div>
+
   </div>
 </template>
 
@@ -142,6 +190,7 @@ export default {
       folders: [],
       files: [],
       uploadProgress: 0,
+      selectedFile: null,
 
       // Filtros
       showDeleted: false,
@@ -197,8 +246,6 @@ export default {
       this.folders = res.data;
     },
     async fetchFiles() {
-      // const res = await fileService.getAll();
-      // this.files = res.data;
       try {
         const res = await fileService.getAll({
           trashed: this.showDeleted ? 'true' : 'false' // Para mostrar archivos eliminados.
@@ -259,6 +306,24 @@ export default {
       await fileService.forceDelete(id);
       await this.fetchFiles();
     },
+    formatSize(bytes) {
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      if (bytes === 0) return '0 Byte';
+      const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+      return Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i];
+    },
+    fileUrl(path) {
+      return `/storage/${path}`;
+    },
+     getDownloadUrl(id) {
+    //return `http://localhost:8001/api/files/${id}/download`;
+    return fileService.downloadUrl(id);
+    },
+    getPublicUrl(path) {
+   const base = import.meta.env.VITE_API_BASE || '';
+  const url = base.replace('/api', '');
+  return `${url}/storage/${path}`;
+},
   },
   mounted() {
     this.fetchFolders();
