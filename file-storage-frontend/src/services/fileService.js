@@ -24,4 +24,7 @@ export default {
   forceDelete(id) {
     return api.delete(`files/${id}/force`);
   },
+  downloadUrl(id) {
+  return `${import.meta.env.VITE_API_BASE}/files/${id}/download`;
+  }
 };
