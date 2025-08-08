@@ -40,7 +40,7 @@ class FileController extends Controller
         $newName = Str::uuid()->toString() . '.' . $uploadedFile->getClientOriginalExtension();
 
         // Guarda en el disco 'public' (storage/app/public/files)
-        $path = $uploadedFile->storeAs('public/files', $newName, 'public');
+        $path = $uploadedFile->storeAs('public/files', $newName);
 
         $file = File::create([
             'name' => $newName,
@@ -125,18 +125,12 @@ class FileController extends Controller
     public function download($id)
     {
         $file = File::findOrFail($id);
+        $fullPath = storage_path('app/public/' . $file->path);
 
-    $fullPath = storage_path('app/' . $file->path);
+        if (!file_exists($fullPath)) {
+            return response()->json(['error' => 'Archivo no encontrado'], 404);
+        }
 
-    if (!file_exists($fullPath)) {
-        return response()->json(['error' => 'Archivo no encontrado'], 404);
-    }
-
-    return response()->download($fullPath, $file->original_name, [
-        'Content-Type' => $file->mime_type,
-        'Content-Disposition' => 'attachment; filename="' . $file->original_name . '"',
-    ]);
-
-
+        return response()->download($fullPath, $file->original_name);
     }
 }

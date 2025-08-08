@@ -165,10 +165,10 @@
       </ul>
 
       <a 
-     v-if="selectedFile && selectedFile.path"
-  :href="getPublicUrl(selectedFile.path)"
-  :download="selectedFile.original_name"
-  class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+        v-if="selectedFile && selectedFile.path"
+        :href="getPublicUrl(selectedFile.path)"
+        :download="selectedFile.original_name"
+        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
         Descargar archivo
       </a>
 
@@ -315,15 +315,9 @@ export default {
     fileUrl(path) {
       return `/storage/${path}`;
     },
-     getDownloadUrl(id) {
-    //return `http://localhost:8001/api/files/${id}/download`;
-    return fileService.downloadUrl(id);
-    },
     getPublicUrl(path) {
-   const base = import.meta.env.VITE_API_BASE || '';
-  const url = base.replace('/api', '');
-  return `${url}/storage/${path}`;
-},
+      return `/storage/${path.replace(/^public\//, '')}`;
+    },
   },
   mounted() {
     this.fetchFolders();
