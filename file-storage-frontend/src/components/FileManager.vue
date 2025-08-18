@@ -174,6 +174,27 @@
 
     </div>
 
+    <!-- Mensaje Toasts -->
+    <div class="fixed top-4 right-4 space-y-3 z-50">
+      <transition-group name="toast" tag="div">
+        <div
+          v-for="toast in toasts" 
+          :key="toast.id"
+          :class="[
+            'flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white cursor-pointer w-72',
+            toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
+          ]"
+          @click="removeToast(toast.id)"
+        >
+          <span v-if="toast.type === 'success'" class="text-xl">✅</span> 
+          <span v-else class="text-xl">❌</span>
+          <div class="flex-1">
+            <p class="font-semibold">{{ toast.message }}</p>
+          </div>
+        </div>
+      </transition-group>
+    </div>
+
   </div>
 </template>
 
@@ -197,6 +218,9 @@ export default {
       onlyImages: false,
       filterFolderId: '',
       filterType: '',
+
+      // Mensajes de toast
+      toasts: []
     };
   },
   computed: {
@@ -285,17 +309,27 @@ export default {
         this.file = null;
         this.uploadProgress = 0;
         await this.fetchFiles();
+        this.showToast('Archivo subido con éxito', 'success');
       } catch (err) {
-        if (err.response?.status === 422) {
-          alert('Error de validación: ' + JSON.stringify(err.response.data.errors));
-        } else {
+        // if (err.response?.status === 422) {
+        //   alert('Error de validación: ' + JSON.stringify(err.response.data.errors));
+        // } else {
+        //   console.error('Error al subir archivo:', err);
+        // }
+          this.showToast('Error al subir archivo', 'error');
           console.error('Error al subir archivo:', err);
-        }
       }
     },
     async deleteFile(id) {
-      await fileService.remove(id);
-      await this.fetchFiles();
+      // await fileService.remove(id);
+      // await this.fetchFiles();
+       try {
+        await fileService.remove(id);
+        await this.fetchFiles();
+        this.showToast('Archivo eliminado', 'success');
+      } catch (err) {
+        this.showToast('Error al eliminar archivo', 'error');
+      }
     },
     async restoreFile(id) {
       await fileService.restore(id);
@@ -318,6 +352,17 @@ export default {
     getPublicUrl(path) {
       return `/storage/${path.replace(/^public\//, '')}`;
     },
+    showToast(message, type = 'success') {
+      const id = Date.now();
+      this.toasts.push({ id, message, type });
+
+      setTimeout(() => {
+        this.removeToast(id);
+      }, 3000);
+    },
+    removeToast(id) {
+      this.toasts = this.toasts.filter(t => t.id !== id);
+    },
   },
   mounted() {
     this.fetchFolders();
@@ -325,3 +370,17 @@ export default {
   },
 };
 </script>
+
+<style >
+.toast-enter-active, .toast-leave-active {
+  transition: all 0.3s ease;
+}
+.toast-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
+}
+</style>
