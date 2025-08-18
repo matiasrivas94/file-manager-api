@@ -30,7 +30,7 @@
       <button
         @click="uploadFile"
         :disabled="!file || !folderId"
-        class="bg-green-600 text-white px-4 py-1 rounded hover:bg-green-700"
+        class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
       >
         Subir archivo
       </button>
@@ -102,24 +102,24 @@
           <div class="flex gap-2">
             <button
               v-if="!showDeleted"
-              @click="deleteFile(file.id)"
-              class="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
+              @click="openConfirm('delete', file.id, '¿Seguro que deseas enviar este archivo a la papelera?')"
+              class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
             >
               Eliminar
             </button>
 
             <button
               v-if="showDeleted"
-              @click="restoreFile(file.id)"
-              class="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600"
+              @click="openConfirm('restore', file.id, '¿Deseas restaurar este archivo?')"
+              class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
             >
               Restaurar
             </button>
 
             <button
               v-if="showDeleted"
-              @click="forceDeleteFile(file.id)"
-              class="bg-black text-white px-2 py-1 rounded hover:bg-gray-800"
+              @click="openConfirm('forceDelete', file.id, '¿Seguro que quieres eliminar este archivo permanentemente?')"
+              class="bg-black text-white px-3 py-1 rounded hover:bg-gray-800"
             >
               Eliminar definitivo
             </button>
@@ -195,6 +195,31 @@
       </transition-group>
     </div>
 
+    <!-- Modal de confirmaciónes -->
+    <div v-if="showConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-lg p-6 w-96">
+        <h3 class="text-lg font-semibold mb-4">Confirmar acción</h3>
+        <p class="mb-6">{{ confirmMessage }}</p>
+        <div class="flex justify-end gap-3">
+           <button @click="confirmNo"
+              class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
+              Cancelar
+            </button>
+            <button
+              @click="confirmYes"
+              :class="[
+                'px-4 py-2 text-white rounded',
+                confirmAction === 'delete' ? 'bg-red-600 hover:bg-red-700' :
+                confirmAction === 'restore' ? 'bg-blue-600 hover:bg-blue-700' :
+                'bg-black hover:bg-gray-800'
+              ]"
+            >
+            Confirmar
+          </button>
+      </div>
+    </div>
+    </div>
+
   </div>
 </template>
 
@@ -219,8 +244,12 @@ export default {
       filterFolderId: '',
       filterType: '',
 
-      // Mensajes de toast
-      toasts: []
+      // Mensajes
+      toasts: [],
+      confirmAction: null, // Acción a confirmar
+      confirmFileId: null, // ID del archivo
+      confirmMessage: '',  // Mensaje a mostrar
+      showConfirm: false   // Abre/cierra el modal
     };
   },
   computed: {
@@ -320,26 +349,26 @@ export default {
           console.error('Error al subir archivo:', err);
       }
     },
-    async deleteFile(id) {
-      // await fileService.remove(id);
-      // await this.fetchFiles();
-       try {
-        await fileService.remove(id);
-        await this.fetchFiles();
-        this.showToast('Archivo eliminado', 'success');
-      } catch (err) {
-        this.showToast('Error al eliminar archivo', 'error');
-      }
-    },
-    async restoreFile(id) {
-      await fileService.restore(id);
-      await this.fetchFiles();
-    },
-    async forceDeleteFile(id) {
-      if (!confirm('¿Seguro que quieres eliminar el archivo permanentemente?')) return;
-      await fileService.forceDelete(id);
-      await this.fetchFiles();
-    },
+    // async deleteFile(id) {
+    //   // await fileService.remove(id);
+    //   // await this.fetchFiles();
+    //    try {
+    //     await fileService.remove(id);
+    //     await this.fetchFiles();
+    //     this.showToast('Archivo eliminado', 'success');
+    //   } catch (err) {
+    //     this.showToast('Error al eliminar archivo', 'error');
+    //   }
+    // },
+    // async restoreFile(id) {
+    //   await fileService.restore(id);
+    //   await this.fetchFiles();
+    // },
+    // async forceDeleteFile(id) {
+    //   if (!confirm('¿Seguro que quieres eliminar el archivo permanentemente?')) return;
+    //   await fileService.forceDelete(id);
+    //   await this.fetchFiles();
+    // },
     formatSize(bytes) {
       const sizes = ['Bytes', 'KB', 'MB', 'GB'];
       if (bytes === 0) return '0 Byte';
@@ -363,6 +392,36 @@ export default {
     removeToast(id) {
       this.toasts = this.toasts.filter(t => t.id !== id);
     },
+    openConfirm(action, fileId, message) {
+    this.confirmAction = action;
+    this.confirmFileId = fileId;
+    this.confirmMessage = message;
+    this.showConfirm = true;
+    },
+    async confirmYes() {
+      if (!this.confirmAction || !this.confirmFileId) return;
+
+      try {
+        if (this.confirmAction === 'delete') {
+          await fileService.remove(this.confirmFileId);
+          this.showToast('Archivo enviado a papelera', 'success');
+        } else if (this.confirmAction === 'restore') {
+          await fileService.restore(this.confirmFileId);
+          this.showToast('Archivo restaurado', 'success');
+        } else if (this.confirmAction === 'forceDelete') {
+          await fileService.forceDelete(this.confirmFileId);
+          this.showToast('Archivo eliminado definitivamente', 'success');
+        }
+
+        await this.fetchFiles();
+      } catch (err) {
+        this.showToast('Error en la acción', 'error');
+      }
+      this.showConfirm = false;
+    },
+    confirmNo() {
+      this.showConfirm = false;
+    }
   },
   mounted() {
     this.fetchFolders();
