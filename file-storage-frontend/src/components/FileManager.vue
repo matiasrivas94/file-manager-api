@@ -79,8 +79,14 @@
 
     <!-- Lista de archivos -->
     <div>
+      <!-- Contador -->
+      <div v-if="files.length > 0" class="text-sm text-gray-600 mb-2">
+        Mostrando {{ files.length }} archivos
+        <span v-if="totalFiles">de {{ totalFiles }}</span>
+      </div>
+
       <h3 class="font-bold mb-2">Archivos:</h3>
-      <ul>
+      <ul v-if="files.length > 0" class="space-y-2">
         <li
           v-for="file in filteredFiles"
           :key="file.id"
@@ -126,6 +132,11 @@
           </div>
         </li>
       </ul>
+
+      <!-- Mensaje vacío -->
+      <div v-else class="text-center text-gray-500 py-6">
+        📂 No hay archivos
+      </div>
     </div>
 
     <!-- Previsualización del archivo seleccionado -->
@@ -235,6 +246,7 @@ export default {
       folderId: '',
       folders: [],
       files: [],
+      totalFiles: 0, // Total de archivos
       uploadProgress: 0,
       selectedFile: null,
 
@@ -304,6 +316,7 @@ export default {
           trashed: this.showDeleted ? 'true' : 'false' // Para mostrar archivos eliminados.
         });
         this.files = res.data;
+        this.totalFiles = res.total ?? this.files.length;
       } catch (err) {
         console.error('Error al obtener archivos:', err);
       }
