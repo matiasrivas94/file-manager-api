@@ -40,6 +40,25 @@
     <div class="my-6 p-4 bg-gray-100 rounded border space-y-2">
       <h3 class="font-semibold">Filtros:</h3>
 
+      <!-- Barra de búsqueda -->
+      <div class="mb-4">
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Buscar por nombre..."
+          class="border rounded px-3 py-2 w-full"
+        />
+      </div>
+
+      <!-- Ordenar -->
+      <div class="mb-4">
+        <label class="mr-2 font-medium">Ordenar por:</label>
+        <select v-model="sortBy" class="border rounded px-2 py-1">
+          <option value="name">Nombre</option>
+          <option value="created_at">Fecha</option>
+        </select>
+      </div>
+
       <div class="flex flex-wrap gap-4 items-center">
         <label class="flex items-center gap-2">
           <input type="checkbox" v-model="showDeleted" @change="fetchFiles"/>
@@ -247,6 +266,8 @@ export default {
       folders: [],
       files: [],
       totalFiles: 0, // Total de archivos
+      searchQuery: "", // Para búsqueda por nombre
+      sortBy: "name",
       uploadProgress: 0,
       selectedFile: null,
 
@@ -266,19 +287,57 @@ export default {
   },
   computed: {
     filteredFiles() {
-      return this.files
+      // return this.files
+      //   .filter(file => this.showDeleted ? file.deleted_at : !file.deleted_at)
+      //   .filter(file => { if (this.showDeleted) return file.deleted_at;
+      //           return !file.deleted_at;
+      //   })
+      //   .filter(file => {
+      //     if (this.onlyImages) return this.isImage(file.mime_type);
+      //     return true;
+      //   })
+      //   .filter(file => {
+      //     if (!this.filterFolderId) return true;
+      //     return file.folder_id === Number(this.filterFolderId);
+      //   })
+      //   .filter(file => {
+      //     if (!this.filterType) return true;
+      //     const mime = file.mime_type;
+
+      //     const map = {
+      //       image: mime.startsWith('image/'),
+      //       pdf: mime === 'application/pdf',
+      //       word: ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(mime),
+      //       excel: ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'].includes(mime),
+      //       ppt: ['application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'].includes(mime),
+      //       text: mime === 'text/plain',
+      //       other: ![
+      //         'image/', 'application/pdf', 'application/msword',
+      //         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      //         'application/vnd.ms-excel',
+      //         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      //         'application/vnd.ms-powerpoint',
+      //         'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      //         'text/plain'
+      //       ].some(type => mime.startsWith(type) || mime === type)
+      //     };
+
+      //     return map[this.filterType];
+      //   });
+      let result = this.files
+        // Mostrar eliminados o no
         .filter(file => this.showDeleted ? file.deleted_at : !file.deleted_at)
-        .filter(file => { if (this.showDeleted) return file.deleted_at;
-                return !file.deleted_at;
-        })
+        // Solo imágenes
         .filter(file => {
           if (this.onlyImages) return this.isImage(file.mime_type);
           return true;
         })
+        // Filtrar por carpeta
         .filter(file => {
           if (!this.filterFolderId) return true;
           return file.folder_id === Number(this.filterFolderId);
         })
+        // Filtrar por tipo
         .filter(file => {
           if (!this.filterType) return true;
           const mime = file.mime_type;
@@ -303,6 +362,21 @@ export default {
 
           return map[this.filterType];
         });
+
+      // Filtro por búsqueda de nombre
+      if (this.searchQuery && this.searchQuery.trim() !== "") {
+        const q = this.searchQuery.toLowerCase();
+        result = result.filter(file => file.name.toLowerCase().includes(q));
+      }
+
+      // Ordenar
+      if (this.sortBy === "name") {
+        result = result.slice().sort((a, b) => a.name.localeCompare(b.name));
+      } else if (this.sortBy === "created_at") {
+        result = result.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      }
+
+      return result;
     }
   },
   methods: {
