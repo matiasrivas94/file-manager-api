@@ -40,25 +40,6 @@
     <div class="my-6 p-4 bg-gray-100 rounded border space-y-2">
       <h3 class="font-semibold">Filtros:</h3>
 
-      <!-- Barra de búsqueda -->
-      <div class="mb-4">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Buscar por nombre..."
-          class="border rounded px-3 py-2 w-full"
-        />
-      </div>
-
-      <!-- Ordenar -->
-      <div class="mb-4">
-        <label class="mr-2 font-medium">Ordenar por:</label>
-        <select v-model="sortBy" class="border rounded px-2 py-1">
-          <option value="name">Nombre</option>
-          <option value="created_at">Fecha</option>
-        </select>
-      </div>
-
       <div class="flex flex-wrap gap-4 items-center">
         <label class="flex items-center gap-2">
           <input type="checkbox" v-model="showDeleted" @change="fetchFiles"/>
@@ -67,18 +48,13 @@
 
         <label class="flex items-center gap-2">
           <input type="checkbox" v-model="onlyImages" />
-          Solo imágenes
+            Solo imágenes
         </label>
 
-        <div>
-          <label class="mr-2">Carpeta:</label>
-          <select v-model="filterFolderId" class="border px-2 py-1">
-            <option value="">Todas</option>
-            <option v-for="folder in folders" :key="folder.id" :value="folder.id">
-              {{ folder.name }}
-            </option>
-          </select>
-        </div>
+        <FolderSelector 
+          v-model="filterFolderId" 
+          :folders="folders" 
+        />
 
         <div>
           <label class="mr-2">Tipo:</label>
@@ -93,83 +69,31 @@
             <option value="other">Otros</option>
           </select>
         </div>
+        
       </div>
     </div>
 
     <!-- Lista de archivos -->
     <div>
-      <!-- Contador -->
-      <div v-if="files.length > 0" class="text-sm text-gray-600 mb-2">
-        Mostrando {{ files.length }} archivos
-        <span v-if="totalFiles">de {{ totalFiles }}</span>
-      </div>
-
       <h3 class="font-bold mb-2">Archivos:</h3>
-      <ul v-if="files.length > 0" class="space-y-2">
-        <li
-          v-for="file in filteredFiles"
-          :key="file.id"
-          class="mb-2 p-2 bg-white shadow rounded flex items-center justify-between"
-          @click="selectedFile = file"
-        >
-          <div class="flex items-center gap-3">
-            <span v-if="isImage(file.mime_type)">
-              <img :src="fileUrl(file.path)" alt="" class="w-10 h-10 object-cover" />
-            </span>
-            <span v-else>📄</span>
-
-            <div>
-              <div class="font-medium">{{ file.original_name }}</div>
-              <div class="text-sm text-gray-500">{{ formatSize(file.size) }}</div>
-            </div>
-          </div>
-
-          <div class="flex gap-2">
-            <button
-              v-if="!showDeleted"
-              @click="openConfirm('delete', file.id, '¿Seguro que deseas enviar este archivo a la papelera?')"
-              class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
-            >
-              Eliminar
-            </button>
-
-            <button
-              v-if="showDeleted"
-              @click="openConfirm('restore', file.id, '¿Deseas restaurar este archivo?')"
-              class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-            >
-              Restaurar
-            </button>
-
-            <button
-              v-if="showDeleted"
-              @click="openConfirm('forceDelete', file.id, '¿Seguro que quieres eliminar este archivo permanentemente?')"
-              class="bg-black text-white px-3 py-1 rounded hover:bg-gray-800"
-            >
-              Eliminar definitivo
-            </button>
-          </div>
-        </li>
-      </ul>
-
-      <!-- Mensaje vacío -->
-      <div v-else class="text-center text-gray-500 py-6">
-        📂 No hay archivos
-      </div>
+      <FileList
+        :files="filteredFiles"
+        :total="files.length"
+        @delete="handleDelete"
+        @restore="handleRestore"  
+        @force-delete="handleForceDelete"
+      />
     </div>
 
     <!-- Previsualización del archivo seleccionado -->
-    <div
-      v-if="selectedFile"
-      class="mt-6 p-4 bg-white rounded shadow border max-w-2xl"
-    >
+    <div v-if="selectedFile" class="mt-6 p-4 bg-white rounded shadow border max-w-2xl">
 
       <button
         @click="selectedFile = null"
         class="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-lg"
         title="Cerrar"
       >
-        ✕
+        Cerrar
       </button>
 
       <h3 class="text-lg font-semibold mb-4">Previsualización</h3>
@@ -201,7 +125,6 @@
         class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
         Descargar archivo
       </a>
-
     </div>
 
     <!-- Mensaje Toasts -->
@@ -248,7 +171,7 @@
           </button>
       </div>
     </div>
-    </div>
+   </div>
 
   </div>
 </template>
@@ -256,18 +179,18 @@
 <script>
 import fileService from '../services/fileService';
 import folderService from '../services/folderService';
+import FolderSelector from './FolderSelector.vue';
+import FileList from './FileList.vue';
 
 export default {
   name: 'FileManager',
+  components: { FolderSelector, FileList },
   data() {
     return {
       file: null,
       folderId: '',
       folders: [],
       files: [],
-      totalFiles: 0, // Total de archivos
-      searchQuery: "", // Para búsqueda por nombre
-      sortBy: "name",
       uploadProgress: 0,
       selectedFile: null,
 
@@ -287,57 +210,16 @@ export default {
   },
   computed: {
     filteredFiles() {
-      // return this.files
-      //   .filter(file => this.showDeleted ? file.deleted_at : !file.deleted_at)
-      //   .filter(file => { if (this.showDeleted) return file.deleted_at;
-      //           return !file.deleted_at;
-      //   })
-      //   .filter(file => {
-      //     if (this.onlyImages) return this.isImage(file.mime_type);
-      //     return true;
-      //   })
-      //   .filter(file => {
-      //     if (!this.filterFolderId) return true;
-      //     return file.folder_id === Number(this.filterFolderId);
-      //   })
-      //   .filter(file => {
-      //     if (!this.filterType) return true;
-      //     const mime = file.mime_type;
-
-      //     const map = {
-      //       image: mime.startsWith('image/'),
-      //       pdf: mime === 'application/pdf',
-      //       word: ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(mime),
-      //       excel: ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'].includes(mime),
-      //       ppt: ['application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'].includes(mime),
-      //       text: mime === 'text/plain',
-      //       other: ![
-      //         'image/', 'application/pdf', 'application/msword',
-      //         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      //         'application/vnd.ms-excel',
-      //         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      //         'application/vnd.ms-powerpoint',
-      //         'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      //         'text/plain'
-      //       ].some(type => mime.startsWith(type) || mime === type)
-      //     };
-
-      //     return map[this.filterType];
-      //   });
-      let result = this.files
-        // Mostrar eliminados o no
+      return this.files
         .filter(file => this.showDeleted ? file.deleted_at : !file.deleted_at)
-        // Solo imágenes
         .filter(file => {
           if (this.onlyImages) return this.isImage(file.mime_type);
           return true;
         })
-        // Filtrar por carpeta
         .filter(file => {
           if (!this.filterFolderId) return true;
           return file.folder_id === Number(this.filterFolderId);
         })
-        // Filtrar por tipo
         .filter(file => {
           if (!this.filterType) return true;
           const mime = file.mime_type;
@@ -362,21 +244,6 @@ export default {
 
           return map[this.filterType];
         });
-
-      // Filtro por búsqueda de nombre
-      if (this.searchQuery && this.searchQuery.trim() !== "") {
-        const q = this.searchQuery.toLowerCase();
-        result = result.filter(file => file.name.toLowerCase().includes(q));
-      }
-
-      // Ordenar
-      if (this.sortBy === "name") {
-        result = result.slice().sort((a, b) => a.name.localeCompare(b.name));
-      } else if (this.sortBy === "created_at") {
-        result = result.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      }
-
-      return result;
     }
   },
   methods: {
@@ -390,24 +257,27 @@ export default {
           trashed: this.showDeleted ? 'true' : 'false' // Para mostrar archivos eliminados.
         });
         this.files = res.data;
-        this.totalFiles = res.total ?? this.files.length;
       } catch (err) {
         console.error('Error al obtener archivos:', err);
       }
     },
     handleFileChange(event) {
-      this.file = event.target.files[0];
+      this.file = event.target.files[0]; // Asignar el primer archivo seleccionado
     },
     fileUrl(path) {
-      return `http://localhost:8001/storage/${path}`;
+      return `http://localhost:8001/storage/${path}`; 
+    },
+    getPublicUrl(path) {
+      return `/storage/${path.replace(/^public\//, '')}`;
     },
     isImage(mime) {
       return mime.startsWith('image/');
     },
     formatSize(bytes) {
-      if (bytes < 1024) return `${bytes} B`;
-      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      if (bytes === 0) return '0 Byte';
+      const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+      return Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i];
     },
     async uploadFile() {
       if (!this.file || !this.folderId) return;
@@ -427,46 +297,19 @@ export default {
         await this.fetchFiles();
         this.showToast('Archivo subido con éxito', 'success');
       } catch (err) {
-        // if (err.response?.status === 422) {
-        //   alert('Error de validación: ' + JSON.stringify(err.response.data.errors));
-        // } else {
-        //   console.error('Error al subir archivo:', err);
-        // }
           this.showToast('Error al subir archivo', 'error');
           console.error('Error al subir archivo:', err);
       }
     },
-    // async deleteFile(id) {
-    //   // await fileService.remove(id);
-    //   // await this.fetchFiles();
-    //    try {
-    //     await fileService.remove(id);
-    //     await this.fetchFiles();
-    //     this.showToast('Archivo eliminado', 'success');
-    //   } catch (err) {
-    //     this.showToast('Error al eliminar archivo', 'error');
-    //   }
-    // },
-    // async restoreFile(id) {
-    //   await fileService.restore(id);
-    //   await this.fetchFiles();
-    // },
-    // async forceDeleteFile(id) {
-    //   if (!confirm('¿Seguro que quieres eliminar el archivo permanentemente?')) return;
-    //   await fileService.forceDelete(id);
-    //   await this.fetchFiles();
-    // },
-    formatSize(bytes) {
-      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-      if (bytes === 0) return '0 Byte';
-      const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
-      return Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i];
+    // Manejadores para eventos de los componentes
+    handleDelete(fileId) {
+      this.openConfirm('delete', fileId, '¿Seguro que deseas enviar este archivo a la papelera?');
     },
-    fileUrl(path) {
-      return `/storage/${path}`;
+    handleRestore(fileId) {
+      this.openConfirm('restore', fileId, '¿Deseas restaurar este archivo?');
     },
-    getPublicUrl(path) {
-      return `/storage/${path.replace(/^public\//, '')}`;
+    handleForceDelete(fileId) {
+      this.openConfirm('forceDelete', fileId, '¿Seguro que quieres eliminar este archivo permanentemente?');
     },
     showToast(message, type = 'success') {
       const id = Date.now();
@@ -480,10 +323,10 @@ export default {
       this.toasts = this.toasts.filter(t => t.id !== id);
     },
     openConfirm(action, fileId, message) {
-    this.confirmAction = action;
-    this.confirmFileId = fileId;
-    this.confirmMessage = message;
-    this.showConfirm = true;
+      this.confirmAction = action;
+      this.confirmFileId = fileId;
+      this.confirmMessage = message;
+      this.showConfirm = true;
     },
     async confirmYes() {
       if (!this.confirmAction || !this.confirmFileId) return;
