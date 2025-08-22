@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\Folder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class FolderController extends Controller
 {
@@ -66,10 +67,39 @@ class FolderController extends Controller
      */
     public function destroy(string $id)
     {
-        //Eliminar (soft delete) una carpeta
-        $folder = Folder::findOrFail($id);
-        $folder->delete();
+        // //Eliminar (soft delete) una carpeta
+        // $folder = Folder::findOrFail($id);
+        // $folder->delete();
 
-        return response()->json(['message' => 'Carpeta eliminada correctamente.']);
+        // return response()->json(['message' => 'Carpeta eliminada correctamente.']);
+
+        $folder = Folder::findOrFail($id);
+        $fileCount = $folder->files()->count();
+        
+        // Si tiene archivos, los elimina junto con la carpeta
+        if ($fileCount > 0) {
+            // Eliminar archivos físicos y registros
+            foreach ($folder->files as $file) {
+                Storage::delete($file->path);
+                $file->delete();
+            }
+        }
+        
+        $folder->delete();
+        
+        return response()->json([
+            'message' => $fileCount > 0 
+                ? "Carpeta eliminada junto con {$fileCount} archivo(s)" 
+                : "Carpeta eliminada"
+        ]);
+    }
+
+    // Método para obtener info antes de eliminar
+    public function info($id) {
+        $folder = Folder::findOrFail($id);
+        return response()->json([
+            'folder' => $folder,
+            'file_count' => $folder->files()->count()
+        ]);
     }
 }
