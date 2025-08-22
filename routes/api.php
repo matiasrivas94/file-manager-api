@@ -9,6 +9,7 @@ Route::get('/', fn() => response()->json(['message' => 'API funcionando correcta
 
 // CARPETAS
 Route::apiResource('folders', FolderController::class);
+Route::get('/folders/{id}/info', [FolderController::class, 'info']);
 
 // ARCHIVOS
 Route::prefix('files')->group(function () {

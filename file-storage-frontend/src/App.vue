@@ -1,9 +1,6 @@
 <template>
-  <!-- <main class="min-h-screen bg-gray-100 p-6">
-    <FolderManager />
-  </main> -->
   <div class="p-4">
-    <h1 class="text-2xl font-bold mb-4">Gestor de Archivos</h1>
+    <h2 class="text-xl font-bold mb-4">Gestor de Carpetas</h2>
     <FolderManager />
     <hr class="my-6" />
     <FileManager />

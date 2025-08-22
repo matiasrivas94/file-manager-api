@@ -12,5 +12,8 @@ export default {
   },
   remove(id) {
     return api.delete(`/folders/${id}`);
+  },
+  getInfo(id) {
+    return api.get(`/folders/${id}/info`);
   }
 };
