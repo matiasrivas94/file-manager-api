@@ -79,6 +79,7 @@
       <FileList
         :files="filteredFiles"
         :total="files.length"
+        @select="handleSelectFile"
         @delete="handleDelete"
         @restore="handleRestore"  
         @force-delete="handleForceDelete"
@@ -302,6 +303,9 @@ export default {
       }
     },
     // Manejadores para eventos de los componentes
+    handleSelectFile(file) {
+      this.selectedFile = file;
+    },
     handleDelete(fileId) {
       this.openConfirm('delete', fileId, '¿Seguro que deseas enviar este archivo a la papelera?');
     },

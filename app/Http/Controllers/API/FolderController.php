@@ -67,12 +67,6 @@ class FolderController extends Controller
      */
     public function destroy(string $id)
     {
-        // //Eliminar (soft delete) una carpeta
-        // $folder = Folder::findOrFail($id);
-        // $folder->delete();
-
-        // return response()->json(['message' => 'Carpeta eliminada correctamente.']);
-
         $folder = Folder::findOrFail($id);
         $fileCount = $folder->files()->count();
         

@@ -11,13 +11,13 @@
         v-for="file in files"
         :key="file.id"
         :file="file"
+        @select="$emit('select', $event)"
         @delete="$emit('delete', $event)"
         @restore="$emit('restore', $event)"
         @force-delete="$emit('force-delete', $event)"
       />
     </ul>
 
-    <!-- Mensaje vacío -->
     <p v-else class="text-gray-500 text-center mt-4">No hay archivos</p>
   </div>
 </template>
